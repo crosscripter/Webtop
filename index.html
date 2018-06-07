@@ -1,0 +1,180 @@
+
+<!doctype html>
+<html>
+<head>
+    <style>
+        body {
+            background-color: #000;
+            -webkit-font-smoothing: antialiased;
+        }
+        #desktop {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            background: #000;
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+        }
+        #big { 
+            display: block;
+            width: 32px !important;
+            height: 32px !important;
+        }
+        input { 
+            color: gray;
+            height: 20px;
+            padding: 0;
+            padding-left: 26px;    
+        }
+        ul {
+            list-style: none;
+        }
+        img {
+            width: 32px;
+            height: 32px;
+        }
+        #apps li {
+            float:left;
+            margin: 1em;
+        }      
+        #clock {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            font-size: 2.5em;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            letter-spacing: 3px;
+            font-weight: 200;
+            text-shadow: 0px 0px 3px #000;
+        }
+    </style>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.ui-contextmenu/1.18.1/jquery.ui-contextmenu.min.js"></script>
+</head>
+<body>
+    <div id='desktop'>
+        <ul id="apps"></ul>
+        <span id="clock">12:00 AM</span>
+    </div>    
+    <script>
+        $(function() {            
+            var base = 'https://icons.duckduckgo.com/ip2/APP.ico';
+
+            // Load session
+            function loadSession(session) {
+                if (localStorage.getItem(session) == null) {
+                    localStorage.setItem(session, JSON.stringify({
+                        "wallpaper": 'http://backgroundcheckall.com/wp-content/uploads/2017/12/simple-dark-background-8.jpg',
+                        "apps": []
+                    }));
+                }
+
+                return JSON.parse(localStorage.getItem(session));
+            }
+
+            var session = 'webtop:user1';
+            var settings = loadSession(session);
+
+            function saveSettings(settings) {
+                localStorage.setItem(session, JSON.stringify(settings));
+                console.log(localStorage.getItem(session));
+            }
+
+            function setWallpaper(url) {
+                $("#desktop").css("background", "url('" + url + "') no-repeat center center fixed");
+                settings.wallpaper = url;
+                console.log(settings);
+                saveSettings(settings);
+            }
+            
+            function loadIcon(app) {
+                $("<li class='draggable'><a><img></a></li>")
+                    .appendTo("#apps")
+                    .find('a').attr('href', 'http://' + app)                    
+                    .find("img")
+                    .attr('src', base.replace('APP', app))
+                    .attr('title', app.split('.')[0]);
+            }
+
+            function install(app) {
+                loadIcon(app);
+                settings.apps.push(app);
+                console.log(settings);
+                saveSettings(settings);
+            }
+
+            $("#desktop").hide(function() {
+                setWallpaper(settings.wallpaper);
+            }).fadeIn(1000, function() {
+
+                // Start clock
+                setInterval(function() {
+                    var now = new Date();
+                    $("#clock").text(now.toLocaleTimeString());
+                }, 1000);
+
+                // Load app icons
+                settings.apps.forEach(function(app) { loadIcon(app); });
+                
+                // Enable app loads
+                $("a").click(function() { window.open($(this).attr('href')); });
+
+                // Enable drag and drop
+                $("#apps").sortable({revert: true});
+                $("li").addClass("draggable");
+
+                $("#draggable").draggable({
+                    connectToSortable: "#sortable",
+                    helper: "clone",
+                    revert: "invalid"
+                });
+
+                $("ul, li, img").disableSelection();
+
+                // Enable menu nav
+                $(document).contextmenu({
+                    delegate: "#desktop",
+                    menu: [
+                        {title: "Restart", cmd: "restart", uiIcon: "ui-icon-restart"},                        
+                        {title: "----"},
+                        {title: "Settings", children: [
+                            {title: "Wallpaper", cmd: "wallpaper"},
+                            {title: "Apps", cmd: "apps"},
+                            {title: "Advanced", children: [
+                                {title: "Reset", cmd: "reset"}
+                            ]}
+                        ]}
+                    ],
+                    select: function action(event, ui) {
+                        switch(ui.cmd) {
+                            case 'restart': 
+                                saveSettings(settings);
+                                window.location.reload(); 
+                                break;
+                            case 'wallpaper': 
+                                setWallpaper(prompt('Enter url to new wallpaper image')); 
+                                break;
+                            case 'apps': 
+                                install(prompt("Type app to install"));
+                                break;
+                            case 'reset':
+                                if (confirm("Are you sure you want to reset all settiings?")) {
+                                    localStorage.clear();
+                                    action(null, {cmd: "restart"});
+                                }
+                                break;
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
